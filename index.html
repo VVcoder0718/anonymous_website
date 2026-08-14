@@ -260,7 +260,6 @@
             </div>
         </header>
 
-        <!-- Share Hint -->
         <div class="share-hint">
             🔗 Share this link with friends to collaborate:
             <strong id="fullUrl">Loading...</strong>
@@ -289,13 +288,11 @@
         // ============================================
 
         function getRoomId() {
-            // Check URL parameters: ?room=abc123
             const urlParams = new URLSearchParams(window.location.search);
             const room = urlParams.get('room');
             if (room && room.length > 0) {
                 return room;
             }
-            // If no room parameter, generate one
             return generateRoomId();
         }
 
@@ -306,12 +303,10 @@
         const roomId = getRoomId();
         document.getElementById('roomId').textContent = roomId;
 
-        // Build the full URL with room parameter
         const baseUrl = window.location.origin + window.location.pathname;
         const fullUrl = baseUrl + '?room=' + roomId;
         document.getElementById('fullUrl').textContent = fullUrl;
 
-        // Update URL without reloading
         if (!window.location.search.includes('room=')) {
             const newUrl = baseUrl + '?room=' + roomId;
             window.history.replaceState({}, '', newUrl);
@@ -340,14 +335,14 @@
         loadContent();
 
         // ============================================
-        // PEERJS REAL-TIME SYNC
+        // PEERJS WITH SIGNALING SERVER
         // ============================================
 
         let peer = null;
         let connections = [];
         let isUpdating = false;
         let reconnectAttempts = 0;
-        const MAX_RECONNECT = 3;
+        const MAX_RECONNECT = 5;
 
         const statusEl = document.getElementById('status');
         const peerDot = document.getElementById('peerDot');
@@ -372,12 +367,20 @@
             updateStatus('connecting', '● Connecting...');
 
             try {
+                // Destroy existing peer if any
+                if (peer && !peer.destroyed) {
+                    peer.destroy();
+                }
+
                 peer = new Peer(roomId, {
                     debug: 0,
                     config: {
                         iceServers: [
                             { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:stun1.l.google.com:19302' }
+                            { urls: 'stun:stun1.l.google.com:19302' },
+                            { urls: 'stun:stun2.l.google.com:19302' },
+                            { urls: 'stun:stun3.l.google.com:19302' },
+                            { urls: 'stun:stun4.l.google.com:19302' }
                         ]
                     }
                 });
@@ -386,16 +389,18 @@
                     console.log('🔗 Peer ID:', id);
                     updateStatus('online', '● Connected');
                     updatePeers(connections.length);
-                    showToast('🔗 Ready to collaborate!');
+                    showToast('🔗 Room ready! Share the URL with friends.');
                     reconnectAttempts = 0;
-                    setTimeout(() => connectToRoom(), 500);
+                    
+                    // Try to connect to existing room
+                    setTimeout(() => {
+                        tryConnectToRoom();
+                    }, 1000);
                 });
 
                 peer.on('connection', (conn) => {
                     console.log('👤 Incoming connection from:', conn.peer);
-                    setupConnection(conn);
-                    updatePeers(connections.length);
-                    showToast('👤 Someone joined the room!');
+                    handleNewConnection(conn);
                 });
 
                 peer.on('disconnected', () => {
@@ -421,43 +426,68 @@
                 peer.on('error', (err) => {
                     console.error('Peer error:', err);
                     if (err.type === 'peer-unavailable') {
-                        updateStatus('online', '● Alone in room');
+                        // No one else in room - we're the host
+                        updateStatus('online', '● Hosting room');
                         updatePeers(0);
+                        showToast('🏠 You are the host!');
+                    } else if (err.type === 'invalid-id') {
+                        // Try to connect as client
+                        setTimeout(() => {
+                            tryConnectToRoom();
+                        }, 1000);
                     }
                 });
 
             } catch (e) {
                 console.error('Peer init error:', e);
                 updateStatus('offline', '● Error connecting');
+                setTimeout(initPeer, 3000);
             }
         }
 
-        function connectToRoom() {
+        function tryConnectToRoom() {
             if (!peer || peer.destroyed) return;
 
             try {
-                const conn = peer.connect(roomId);
+                console.log('🔗 Trying to connect to room:', roomId);
+                const conn = peer.connect(roomId, {
+                    reliable: true
+                });
+                
                 if (conn) {
                     conn.on('open', () => {
                         console.log('✅ Connected to room:', roomId);
-                        setupConnection(conn);
-                        updatePeers(connections.length);
+                        handleNewConnection(conn);
                         showToast('🔗 Connected to peers!');
                     });
 
                     conn.on('error', (err) => {
                         console.log('Connection error:', err);
+                        // If connection fails and we have no connections, become host
+                        if (connections.length === 0) {
+                            setTimeout(() => {
+                                if (peer && !peer.destroyed) {
+                                    peer.destroy();
+                                    initPeer();
+                                }
+                            }, 2000);
+                        }
                     });
                 }
             } catch (e) {
-                console.log('No existing room found. You\'re the host!');
-                updateStatus('online', '● Hosting room');
+                console.log('Could not connect. Waiting for others...');
             }
         }
 
-        function setupConnection(conn) {
+        function handleNewConnection(conn) {
+            // Check if connection already exists
+            if (connections.some(c => c.peer === conn.peer)) {
+                return;
+            }
+            
             connections.push(conn);
             updatePeers(connections.length);
+            showToast('👤 Someone joined the room!');
 
             conn.on('data', (data) => {
                 if (data.type === 'update') {
@@ -467,10 +497,14 @@
                     isUpdating = false;
                 }
                 if (data.type === 'sync-request') {
+                    // Send current content to new peer
                     conn.send({
                         type: 'update',
                         content: editor.value
                     });
+                }
+                if (data.type === 'presence') {
+                    updatePeers(connections.length);
                 }
             });
 
@@ -483,9 +517,16 @@
                 if (connections.length === 0) {
                     updateStatus('online', '● Alone in room');
                 }
+                showToast('👤 Someone left the room');
             });
 
+            // Request sync from peer
             conn.send({ type: 'sync-request' });
+            
+            // Announce presence
+            setTimeout(() => {
+                conn.send({ type: 'presence' });
+            }, 500);
         }
 
         let sendTimeout = null;
@@ -510,7 +551,6 @@
         // ============================================
 
         function copyUrl() {
-            // Copy the full URL with room parameter
             const url = window.location.origin + window.location.pathname + '?room=' + roomId;
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(url).then(() => showToast('✅ URL copied!'));
@@ -604,10 +644,6 @@
             }, 2500);
         }
 
-        // ============================================
-        // KEYBOARD SHORTCUTS
-        // ============================================
-
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 's') {
                 e.preventDefault();
@@ -628,7 +664,8 @@
         console.log('🏠 Room ID:', roomId);
         console.log('👥 Share the URL with friends to collaborate!');
 
-        initPeer();
+        // Initialize with a delay
+        setTimeout(initPeer, 500);
     </script>
 </body>
 </html>
