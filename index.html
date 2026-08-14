@@ -196,6 +196,28 @@
         .peer-dot.offline {
             background: #f85149;
         }
+        .share-hint {
+            background: #1c2333;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            font-size: 14px;
+            color: #8b949e;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .share-hint strong {
+            color: #58a6ff;
+            word-break: break-all;
+        }
+        .share-hint .btn {
+            padding: 4px 12px;
+            font-size: 12px;
+            margin-left: auto;
+        }
         @media (max-width: 768px) {
             body {
                 padding: 10px;
@@ -210,6 +232,14 @@
             }
             .logo {
                 font-size: 20px;
+            }
+            .share-hint {
+                font-size: 12px;
+                flex-direction: column;
+                text-align: center;
+            }
+            .share-hint .btn {
+                margin-left: 0;
             }
         }
     </style>
@@ -230,6 +260,13 @@
             </div>
         </header>
 
+        <!-- Share Hint -->
+        <div class="share-hint">
+            🔗 Share this link with friends to collaborate:
+            <strong id="fullUrl">Loading...</strong>
+            <button class="btn" onclick="copyUrl()">📋 Copy</button>
+        </div>
+
         <div class="editor-wrapper" id="editorWrapper">
             <div class="toolbar">
                 <button class="btn" onclick="takeScreenshot()">📸 Screenshot</button>
@@ -248,16 +285,17 @@
 
     <script>
         // ============================================
-        // ROOM MANAGEMENT
+        // ROOM MANAGEMENT - Using URL Parameters
         // ============================================
 
         function getRoomId() {
-            const path = window.location.pathname;
-            const parts = path.split('/');
-            const room = parts[parts.length - 1];
-            if (room && room.length > 0 && room !== 'index.html' && room !== '') {
+            // Check URL parameters: ?room=abc123
+            const urlParams = new URLSearchParams(window.location.search);
+            const room = urlParams.get('room');
+            if (room && room.length > 0) {
                 return room;
             }
+            // If no room parameter, generate one
             return generateRoomId();
         }
 
@@ -268,8 +306,14 @@
         const roomId = getRoomId();
         document.getElementById('roomId').textContent = roomId;
 
-        if (window.location.pathname === '/' || window.location.pathname === '/index.html' || window.location.pathname === '') {
-            const newUrl = window.location.origin + '/' + roomId;
+        // Build the full URL with room parameter
+        const baseUrl = window.location.origin + window.location.pathname;
+        const fullUrl = baseUrl + '?room=' + roomId;
+        document.getElementById('fullUrl').textContent = fullUrl;
+
+        // Update URL without reloading
+        if (!window.location.search.includes('room=')) {
+            const newUrl = baseUrl + '?room=' + roomId;
             window.history.replaceState({}, '', newUrl);
         }
 
@@ -466,7 +510,8 @@
         // ============================================
 
         function copyUrl() {
-            const url = window.location.href;
+            // Copy the full URL with room parameter
+            const url = window.location.origin + window.location.pathname + '?room=' + roomId;
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(url).then(() => showToast('✅ URL copied!'));
             } else {
@@ -484,7 +529,8 @@
 
         function newRoom() {
             const newId = generateRoomId();
-            window.location.href = '/' + newId;
+            const baseUrl = window.location.origin + window.location.pathname;
+            window.location.href = baseUrl + '?room=' + newId;
         }
 
         function downloadContent() {
@@ -578,7 +624,7 @@
         // ============================================
 
         console.log('📝 Real-Time CodeShare');
-        console.log('🔗 Share this URL:', window.location.href);
+        console.log('🔗 Share this URL:', window.location.origin + window.location.pathname + '?room=' + roomId);
         console.log('🏠 Room ID:', roomId);
         console.log('👥 Share the URL with friends to collaborate!');
 
