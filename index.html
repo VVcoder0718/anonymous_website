@@ -1,299 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📝 Anonymous CodeShare</title>
-
-    <!-- Styles -->
+    <title>📝 Real-Time CodeShare</title>
     <style>
-        /* Reset */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: #0d1117;
-            color: #c9d1d9;
-            height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Header */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 0;
-            border-bottom: 1px solid #30363d;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-            color: #58a6ff;
-        }
-
-        .logo span {
-            color: #f0883e;
-        }
-
-        .room-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .room-id {
-            background: #21262d;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            color: #58a6ff;
-        }
-
-        .btn {
-            background: #21262d;
-            color: #c9d1d9;
-            border: 1px solid #30363d;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-
-        .btn:hover {
-            background: #30363d;
-            border-color: #58a6ff;
-        }
-
-        .btn-primary {
-            background: #238636;
-            border-color: #238636;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #2ea043;
-            border-color: #2ea043;
-        }
-
-        /* Editor */
-        .editor-wrapper {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: #161b22;
-            border-radius: 8px;
-            border: 1px solid #30363d;
-            overflow: hidden;
-        }
-
-        .toolbar {
-            display: flex;
-            gap: 10px;
-            padding: 12px 16px;
-            background: #0d1117;
-            border-bottom: 1px solid #30363d;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .toolbar .btn {
-            padding: 6px 14px;
-            font-size: 13px;
-        }
-
-        .status {
-            margin-left: auto;
-            font-size: 13px;
-            color: #3fb950;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .status::before {
-            content: '';
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background: #3fb950;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.3;
-            }
-        }
-
-        .status.offline {
-            color: #f85149;
-        }
-
-        .status.offline::before {
-            background: #f85149;
-        }
-
-        textarea {
-            flex: 1;
-            background: #0d1117;
-            color: #c9d1d9;
-            border: none;
-            padding: 20px;
-            font-family: 'Consolas', 'Courier New', monospace;
-            font-size: 15px;
-            line-height: 1.7;
-            resize: none;
-            outline: none;
-            min-height: 300px;
-        }
-
-        textarea::placeholder {
-            color: #484f58;
-        }
-
-        /* Toast notification */
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #21262d;
-            color: #c9d1d9;
-            padding: 12px 24px;
-            border-radius: 8px;
-            border: 1px solid #30363d;
-            font-size: 14px;
-            z-index: 9999;
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-        }
-
-        .toast.show {
-            opacity: 1;
-        }
-
-        /* Screenshot mode */
-        .screenshot-mode {
-            background: white !important;
-            color: black !important;
-        }
-
-        .screenshot-mode textarea {
-            background: white !important;
-            color: black !important;
-        }
-
-        .screenshot-mode .toolbar {
-            background: #f0f0f0 !important;
-            border-bottom-color: #ddd !important;
-        }
-
-        .screenshot-mode .header {
-            border-bottom-color: #ddd !important;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-
-            .header {
-                flex-direction: column;
-                align-items: stretch;
-                text-align: center;
-            }
-
-            .room-info {
-                justify-content: center;
-            }
-
-            .logo {
-                font-size: 20px;
-            }
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; background: #0d1117; color: #c9d1d9; height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #30363d; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .logo { font-size: 24px; font-weight: bold; color: #58a6ff; }
+        .logo span { color: #f0883e; }
+        .room-info { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .room-id { background: #21262d; padding: 6px 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 14px; color: #58a6ff; }
+        .btn { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+        .btn:hover { background: #30363d; border-color: #58a6ff; }
+        .btn-primary { background: #238636; border-color: #238636; color: white; }
+        .btn-primary:hover { background: #2ea043; border-color: #2ea043; }
+        .btn-danger { background: #da3633; border-color: #da3633; color: white; }
+        .btn-danger:hover { background: #f85149; border-color: #f85149; }
+        .editor-wrapper { flex: 1; display: flex; flex-direction: column; background: #161b22; border-radius: 8px; border: 1px solid #30363d; overflow: hidden; }
+        .toolbar { display: flex; gap: 10px; padding: 12px 16px; background: #0d1117; border-bottom: 1px solid #30363d; flex-wrap: wrap; align-items: center; }
+        .toolbar .btn { padding: 6px 14px; font-size: 13px; }
+        .status { margin-left: auto; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+        .status.online { color: #3fb950; }
+        .status.offline { color: #f85149; }
+        .status.connecting { color: #d29922; }
+        .status::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+        .status.online::before { background: #3fb950; animation: pulse 2s infinite; }
+        .status.offline::before { background: #f85149; }
+        .status.connecting::before { background: #d29922; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        textarea { flex: 1; background: #0d1117; color: #c9d1d9; border: none; padding: 20px; font-family: 'Consolas', 'Courier New', monospace; font-size: 15px; line-height: 1.7; resize: none; outline: none; min-height: 300px; }
+        textarea::placeholder { color: #484f58; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #21262d; color: #c9d1d9; padding: 12px 24px; border-radius: 8px; border: 1px solid #30363d; font-size: 14px; z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .toast.show { opacity: 1; }
+        .peer-info { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #8b949e; }
+        .peer-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3fb950; }
+        .peer-dot.offline { background: #f85149; }
+        .screenshot-mode { background: white !important; color: black !important; }
+        .screenshot-mode textarea { background: white !important; color: black !important; }
+        .screenshot-mode .toolbar { background: #f0f0f0 !important; border-bottom-color: #ddd !important; }
+        .screenshot-mode .header { border-bottom-color: #ddd !important; }
+        @media (max-width: 768px) { body { padding: 10px; } .header { flex-direction: column; align-items: stretch; text-align: center; } .room-info { justify-content: center; } .logo { font-size: 20px; } }
     </style>
 </head>
-
 <body>
     <div class="container">
-        <!-- Header -->
         <header class="header">
             <div class="logo">📝 Code<span>Share</span></div>
             <div class="room-info">
                 <span>Room:</span>
                 <span class="room-id" id="roomId">Loading...</span>
+                <span class="peer-info">
+                    <span class="peer-dot" id="peerDot"></span>
+                    <span id="peerCount">0 peers</span>
+                </span>
                 <button class="btn" onclick="copyUrl()">📋 Copy URL</button>
                 <button class="btn btn-primary" onclick="newRoom()">✨ New Room</button>
             </div>
         </header>
 
-        <!-- Editor -->
         <div class="editor-wrapper" id="editorWrapper">
             <div class="toolbar">
                 <button class="btn" onclick="takeScreenshot()">📸 Screenshot</button>
                 <button class="btn" onclick="downloadContent()">💾 Download</button>
                 <button class="btn" onclick="clearContent()">🗑️ Clear</button>
-                <span class="status" id="status">Connected</span>
+                <span class="status online" id="status">● Connected</span>
             </div>
-            <textarea id="editor" placeholder="Start typing or paste your code here..."></textarea>
+            <textarea id="editor" placeholder="Start typing... Everyone in this room will see changes in real-time!"></textarea>
         </div>
     </div>
 
-    <!-- Toast Notification -->
     <div class="toast" id="toast"></div>
 
     <!-- Libraries -->
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-
-    <!-- Main Script -->
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    
     <script>
         // ============================================
         // 1. ROOM MANAGEMENT
         // ============================================
-
-        // Get or create room ID
+        
         function getRoomId() {
-            // Check if URL has a room ID
             const path = window.location.pathname;
             const parts = path.split('/');
             const room = parts[parts.length - 1];
-
-            // If there's a room ID in URL, use it
-            if (room && room.length > 0 && room !== 'index.html') {
+            if (room && room.length > 0 && room !== 'index.html' && room !== '') {
                 return room;
             }
-
-            // Otherwise generate a new one
             return generateRoomId();
         }
 
@@ -301,102 +97,242 @@
             return Math.random().toString(36).substring(2, 8);
         }
 
-        // Initialize room
         const roomId = getRoomId();
         document.getElementById('roomId').textContent = roomId;
 
-        // Update URL without page reload
-        if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
+        if (window.location.pathname === '/' || window.location.pathname === '/index.html' || window.location.pathname === '') {
             const newUrl = window.location.origin + '/' + roomId;
             window.history.replaceState({}, '', newUrl);
         }
 
         // ============================================
-        // 2. LOCAL STORAGE (Save content)
+        // 2. LOCAL STORAGE
         // ============================================
-
+        
         const editor = document.getElementById('editor');
         const STORAGE_KEY = 'codeshare_' + roomId;
 
-        // Load saved content
         function loadContent() {
             try {
                 const saved = localStorage.getItem(STORAGE_KEY);
-                if (saved) {
-                    editor.value = saved;
-                }
-            } catch (e) {
-                // Ignore
-            }
+                if (saved) editor.value = saved;
+            } catch (e) {}
         }
 
-        // Save content
         function saveContent() {
             try {
                 localStorage.setItem(STORAGE_KEY, editor.value);
-            } catch (e) {
-                // Ignore
-            }
+            } catch (e) {}
         }
 
-        // Auto-save on typing
-        editor.addEventListener('input', saveContent);
-
-        // Load content on page load
         loadContent();
 
         // ============================================
-        // 3. COPY URL
+        // 3. PEERJS REAL-TIME SYNC
         // ============================================
+        
+        let peer = null;
+        let connections = [];
+        let isConnected = false;
+        let isUpdating = false;
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT = 3;
+        
+        const statusEl = document.getElementById('status');
+        const peerDot = document.getElementById('peerDot');
+        const peerCountEl = document.getElementById('peerCount');
 
+        function updateStatus(type, msg) {
+            statusEl.className = 'status ' + type;
+            statusEl.textContent = msg;
+        }
+
+        function updatePeers(count) {
+            if (count > 0) {
+                peerDot.className = 'peer-dot';
+                peerCountEl.textContent = count + ' peer' + (count > 1 ? 's' : '');
+            } else {
+                peerDot.className = 'peer-dot offline';
+                peerCountEl.textContent = '0 peers';
+            }
+        }
+
+        function initPeer() {
+            updateStatus('connecting', '● Connecting...');
+            
+            try {
+                peer = new Peer(roomId, {
+                    debug: 0,
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:stun1.l.google.com:19302' }
+                        ]
+                    }
+                });
+                
+                peer.on('open', (id) => {
+                    console.log('🔗 Peer ID:', id);
+                    updateStatus('online', '● Connected');
+                    updatePeers(connections.length);
+                    showToast('🔗 Ready to collaborate!');
+                    isConnected = true;
+                    reconnectAttempts = 0;
+                    
+                    // Try to connect to existing room
+                    setTimeout(() => connectToRoom(), 500);
+                });
+                
+                peer.on('connection', (conn) => {
+                    console.log('👤 Incoming connection from:', conn.peer);
+                    setupConnection(conn);
+                    updatePeers(connections.length);
+                    showToast('👤 Someone joined the room!');
+                });
+                
+                peer.on('disconnected', () => {
+                    console.log('⚠️ Peer disconnected');
+                    updateStatus('connecting', '● Reconnecting...');
+                    isConnected = false;
+                    setTimeout(() => {
+                        if (peer && !peer.destroyed) {
+                            peer.reconnect();
+                        }
+                    }, 2000);
+                });
+                
+                peer.on('close', () => {
+                    console.log('🔴 Peer closed');
+                    updateStatus('offline', '● Disconnected');
+                    isConnected = false;
+                    updatePeers(0);
+                    if (reconnectAttempts < MAX_RECONNECT) {
+                        reconnectAttempts++;
+                        setTimeout(initPeer, 3000);
+                    }
+                });
+                
+                peer.on('error', (err) => {
+                    console.error('Peer error:', err);
+                    if (err.type === 'peer-unavailable') {
+                        // This is normal - means no one else is in the room
+                        updateStatus('online', '● Alone in room');
+                        updatePeers(0);
+                    }
+                });
+                
+            } catch (e) {
+                console.error('Peer init error:', e);
+                updateStatus('offline', '● Error connecting');
+            }
+        }
+
+        function connectToRoom() {
+            if (!peer || peer.destroyed) return;
+            
+            try {
+                const conn = peer.connect(roomId);
+                if (conn) {
+                    conn.on('open', () => {
+                        console.log('✅ Connected to room:', roomId);
+                        setupConnection(conn);
+                        updatePeers(connections.length);
+                        showToast('🔗 Connected to peers!');
+                    });
+                    
+                    conn.on('error', (err) => {
+                        console.log('Connection error:', err);
+                    });
+                }
+            } catch (e) {
+                console.log('No existing room found. You\'re the host!');
+                updateStatus('online', '● Hosting room');
+            }
+        }
+
+        function setupConnection(conn) {
+            connections.push(conn);
+            updatePeers(connections.length);
+            
+            conn.on('data', (data) => {
+                if (data.type === 'update') {
+                    isUpdating = true;
+                    editor.value = data.content;
+                    saveContent();
+                    isUpdating = false;
+                }
+                if (data.type === 'sync-request') {
+                    // Send current content to new peer
+                    conn.send({
+                        type: 'update',
+                        content: editor.value
+                    });
+                }
+            });
+            
+            conn.on('close', () => {
+                const index = connections.indexOf(conn);
+                if (index > -1) {
+                    connections.splice(index, 1);
+                }
+                updatePeers(connections.length);
+                if (connections.length === 0) {
+                    updateStatus('online', '● Alone in room');
+                }
+            });
+            
+            // Request sync from peer
+            conn.send({ type: 'sync-request' });
+        }
+
+        // Send updates to all peers
+        let sendTimeout = null;
+        editor.addEventListener('input', () => {
+            saveContent();
+            
+            if (!isUpdating && connections.length > 0) {
+                clearTimeout(sendTimeout);
+                sendTimeout = setTimeout(() => {
+                    const content = editor.value;
+                    connections.forEach(c => {
+                        if (c.open) {
+                            c.send({ type: 'update', content });
+                        }
+                    });
+                }, 200);
+            }
+        });
+
+        // ============================================
+        // 4. UI FUNCTIONS
+        // ============================================
+        
         function copyUrl() {
             const url = window.location.href;
-
             if (navigator.clipboard) {
-                navigator.clipboard.writeText(url)
-                    .then(() => showToast('✅ URL copied!'))
-                    .catch(() => fallbackCopy(url));
+                navigator.clipboard.writeText(url).then(() => showToast('✅ URL copied!'));
             } else {
-                fallbackCopy(url);
-            }
-        }
-
-        function fallbackCopy(text) {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            textarea.style.position = 'fixed';
-            textarea.style.opacity = '0';
-            document.body.appendChild(textarea);
-            textarea.select();
-
-            try {
+                const textarea = document.createElement('textarea');
+                textarea.value = url;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
                 document.execCommand('copy');
+                document.body.removeChild(textarea);
                 showToast('✅ URL copied!');
-            } catch (e) {
-                showToast('❌ Please copy manually: ' + text);
             }
-
-            document.body.removeChild(textarea);
         }
-
-        // ============================================
-        // 4. CREATE NEW ROOM
-        // ============================================
 
         function newRoom() {
             const newId = generateRoomId();
             window.location.href = '/' + newId;
         }
 
-        // ============================================
-        // 5. DOWNLOAD CONTENT
-        // ============================================
-
         function downloadContent() {
             const content = editor.value || '// Empty file';
             const blob = new Blob([content], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
-
             const link = document.createElement('a');
             link.href = url;
             link.download = `codeshare-${roomId}.txt`;
@@ -404,35 +340,30 @@
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
-
             showToast('💾 Downloaded!');
         }
 
-        // ============================================
-        // 6. CLEAR CONTENT
-        // ============================================
-
         function clearContent() {
-            if (confirm('Clear all content?')) {
+            if (confirm('Clear all content? This will affect everyone in the room.')) {
                 editor.value = '';
                 saveContent();
-                showToast('🗑️ Cleared');
+                // Broadcast clear
+                connections.forEach(c => {
+                    if (c.open) {
+                        c.send({ type: 'update', content: '' });
+                    }
+                });
+                showToast('🗑️ Cleared for everyone');
             }
         }
-
-        // ============================================
-        // 7. SCREENSHOT
-        // ============================================
 
         function takeScreenshot() {
             const wrapper = document.getElementById('editorWrapper');
             const originalBg = document.body.style.background;
-
-            // Add screenshot mode (white background for better visibility)
+            
             document.body.style.background = '#ffffff';
             wrapper.classList.add('screenshot-mode');
-
-            // Small delay for styles to apply
+            
             setTimeout(() => {
                 html2canvas(wrapper, {
                     scale: 2,
@@ -441,31 +372,22 @@
                     allowTaint: true,
                     useCORS: true
                 })
-                    .then(canvas => {
-                        // Restore original styles
-                        document.body.style.background = originalBg;
-                        wrapper.classList.remove('screenshot-mode');
-
-                        // Download screenshot
-                        const link = document.createElement('a');
-                        link.download = `codeshare-${roomId}.png`;
-                        link.href = canvas.toDataURL('image/png');
-                        link.click();
-
-                        showToast('📸 Screenshot saved!');
-                    })
-                    .catch(err => {
-                        console.error('Screenshot error:', err);
-                        document.body.style.background = originalBg;
-                        wrapper.classList.remove('screenshot-mode');
-                        showToast('❌ Screenshot failed');
-                    });
+                .then(canvas => {
+                    document.body.style.background = originalBg;
+                    wrapper.classList.remove('screenshot-mode');
+                    const link = document.createElement('a');
+                    link.download = `codeshare-${roomId}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    showToast('📸 Screenshot saved!');
+                })
+                .catch(() => {
+                    document.body.style.background = originalBg;
+                    wrapper.classList.remove('screenshot-mode');
+                    showToast('❌ Screenshot failed');
+                });
             }, 100);
         }
-
-        // ============================================
-        // 8. TOAST NOTIFICATIONS
-        // ============================================
 
         let toastTimeout = null;
 
@@ -473,7 +395,6 @@
             const toast = document.getElementById('toast');
             toast.textContent = message;
             toast.classList.add('show');
-
             clearTimeout(toastTimeout);
             toastTimeout = setTimeout(() => {
                 toast.classList.remove('show');
@@ -481,17 +402,14 @@
         }
 
         // ============================================
-        // 9. KEYBOARD SHORTCUTS
+        // 5. KEYBOARD SHORTCUTS
         // ============================================
-
+        
         document.addEventListener('keydown', (e) => {
-            // Ctrl+S = Screenshot
             if (e.ctrlKey && e.key === 's') {
                 e.preventDefault();
                 takeScreenshot();
             }
-
-            // Ctrl+D = Download
             if (e.ctrlKey && e.key === 'd') {
                 e.preventDefault();
                 downloadContent();
@@ -499,67 +417,16 @@
         });
 
         // ============================================
-        // 10. DISPLAY ROOM INFO IN CONSOLE
+        // 6. START
         // ============================================
-
-        console.log('📝 CodeShare Room');
+        
+        console.log('📝 Real-Time CodeShare');
         console.log('🔗 Share this URL:', window.location.href);
         console.log('🏠 Room ID:', roomId);
-        console.log('💾 Content saved locally');
-
-        // ============================================
-        // 11. OPTIONAL: P2P REAL-TIME SYNC (via PeerJS)
-        // ============================================
-        // Uncomment below for real-time sync between friends
-        // You'll need to include PeerJS library
-
-        /*
-        // Load PeerJS library
-        const peerScript = document.createElement('script');
-        peerScript.src = 'https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js';
-        document.head.appendChild(peerScript);
+        console.log('👥 Share the URL with friends to collaborate!');
         
-        peerScript.onload = function() {
-            const peer = new Peer(roomId);
-            let connections = [];
-            
-            peer.on('open', (id) => {
-                console.log('Peer ready:', id);
-            });
-            
-            peer.on('connection', (conn) => {
-                connections.push(conn);
-                setupConnection(conn);
-            });
-            
-            function setupConnection(conn) {
-                conn.on('data', (data) => {
-                    if (data.type === 'content') {
-                        editor.value = data.content;
-                        saveContent();
-                    }
-                });
-                
-                // Send content when editor changes
-                editor.addEventListener('input', () => {
-                    connections.forEach(c => {
-                        if (c.open) {
-                            c.send({ type: 'content', content: editor.value });
-                        }
-                    });
-                });
-            }
-            
-            // Connect to existing peer if room already exists
-            // Check if peer exists by trying to connect
-            const conn = peer.connect(roomId);
-            if (conn) {
-                connections.push(conn);
-                setupConnection(conn);
-            }
-        };
-        */
+        // Initialize PeerJS
+        initPeer();
     </script>
 </body>
-
 </html>
