@@ -1,41 +1,706 @@
-const express = require('express');
-const app = express();
-const server = require('http').createServer(app);
-const io = require('socket.io')(server);
-
-app.use(express.static('public'));
-
-const rooms = new Map();
-
-io.on('connection', (socket) => {
-    let roomId = null;
-    
-    socket.on('join', (id) => {
-        roomId = id;
-        socket.join(id);
-        if (!rooms.has(id)) {
-            rooms.set(id, { content: '', users: new Set() });
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📝 Real-Time CodeShare</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        rooms.get(id).users.add(socket.id);
-        socket.emit('init', rooms.get(id).content);
-        socket.to(id).emit('peers', rooms.get(id).users.size);
-    });
-    
-    socket.on('update', (content) => {
-        if (roomId && rooms.has(roomId)) {
-            rooms.get(roomId).content = content;
-            socket.to(roomId).emit('update', content);
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            height: 100vh;
+            padding: 20px;
         }
-    });
-    
-    socket.on('disconnect', () => {
-        if (roomId && rooms.has(roomId)) {
-            rooms.get(roomId).users.delete(socket.id);
-            if (rooms.get(roomId).users.size === 0) {
-                rooms.delete(roomId);
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #30363d;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #58a6ff;
+        }
+        .logo span {
+            color: #f0883e;
+        }
+        .room-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .room-id {
+            background: #21262d;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #58a6ff;
+        }
+        .btn {
+            background: #21262d;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background: #30363d;
+            border-color: #58a6ff;
+        }
+        .btn-primary {
+            background: #238636;
+            border-color: #238636;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2ea043;
+            border-color: #2ea043;
+        }
+        .editor-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #161b22;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            overflow: hidden;
+        }
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            padding: 12px 16px;
+            background: #0d1117;
+            border-bottom: 1px solid #30363d;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .toolbar .btn {
+            padding: 6px 14px;
+            font-size: 13px;
+        }
+        .status {
+            margin-left: auto;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .status.online {
+            color: #3fb950;
+        }
+        .status.offline {
+            color: #f85149;
+        }
+        .status.connecting {
+            color: #d29922;
+        }
+        .status::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .status.online::before {
+            background: #3fb950;
+            animation: pulse 2s infinite;
+        }
+        .status.offline::before {
+            background: #f85149;
+        }
+        .status.connecting::before {
+            background: #d29922;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        textarea {
+            flex: 1;
+            background: #0d1117;
+            color: #c9d1d9;
+            border: none;
+            padding: 20px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 15px;
+            line-height: 1.7;
+            resize: none;
+            outline: none;
+            min-height: 300px;
+        }
+        textarea::placeholder {
+            color: #484f58;
+        }
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #21262d;
+            color: #c9d1d9;
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            font-size: 14px;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+        .peer-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #8b949e;
+        }
+        .peer-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #3fb950;
+        }
+        .peer-dot.offline {
+            background: #f85149;
+        }
+        .share-hint {
+            background: #1c2333;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            font-size: 14px;
+            color: #8b949e;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .share-hint strong {
+            color: #58a6ff;
+            word-break: break-all;
+        }
+        .share-hint .btn {
+            padding: 4px 12px;
+            font-size: 12px;
+            margin-left: auto;
+        }
+        .manual-connect {
+            background: #1c2333;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            margin-bottom: 15px;
+            display: none;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .manual-connect input {
+            background: #0d1117;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-family: monospace;
+            flex: 1;
+            min-width: 150px;
+        }
+        .manual-connect .btn {
+            padding: 6px 16px;
+        }
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .header { flex-direction: column; align-items: stretch; text-align: center; }
+            .room-info { justify-content: center; }
+            .logo { font-size: 20px; }
+            .share-hint { font-size: 12px; flex-direction: column; text-align: center; }
+            .share-hint .btn { margin-left: 0; }
+            .manual-connect { flex-direction: column; }
+            .manual-connect input { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">📝 Code<span>Share</span></div>
+            <div class="room-info">
+                <span>Room:</span>
+                <span class="room-id" id="roomId">Loading...</span>
+                <span class="peer-info">
+                    <span class="peer-dot" id="peerDot"></span>
+                    <span id="peerCount">0 peers</span>
+                </span>
+                <button class="btn" onclick="copyUrl()">📋 Copy URL</button>
+                <button class="btn btn-primary" onclick="newRoom()">✨ New Room</button>
+            </div>
+        </header>
+
+        <div class="share-hint">
+            🔗 Share this link with friends to collaborate:
+            <strong id="fullUrl">Loading...</strong>
+            <button class="btn" onclick="copyUrl()">📋 Copy</button>
+        </div>
+
+        <div class="manual-connect" id="manualConnect">
+            <span>🔗 Or enter a peer ID to connect:</span>
+            <input type="text" id="peerInput" placeholder="Enter peer ID...">
+            <button class="btn btn-primary" onclick="manualConnect()">Connect</button>
+        </div>
+
+        <div class="editor-wrapper" id="editorWrapper">
+            <div class="toolbar">
+                <button class="btn" onclick="takeScreenshot()">📸 Screenshot</button>
+                <button class="btn" onclick="downloadContent()">💾 Download</button>
+                <button class="btn" onclick="clearContent()">🗑️ Clear</button>
+                <span class="status online" id="status">● Connected</span>
+            </div>
+            <textarea id="editor" placeholder="Start typing... Everyone in this room will see changes in real-time!"></textarea>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.1/dist/peerjs.min.js"></script>
+
+    <script>
+        // ============================================
+        // ROOM MANAGEMENT
+        // ============================================
+
+        function getRoomId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const room = urlParams.get('room');
+            if (room && room.length > 0) {
+                return room;
+            }
+            return generateRoomId();
+        }
+
+        function generateRoomId() {
+            return Math.random().toString(36).substring(2, 8);
+        }
+
+        const roomId = getRoomId();
+        document.getElementById('roomId').textContent = roomId;
+
+        const baseUrl = window.location.origin + window.location.pathname;
+        const fullUrl = baseUrl + '?room=' + roomId;
+        document.getElementById('fullUrl').textContent = fullUrl;
+
+        if (!window.location.search.includes('room=')) {
+            const newUrl = baseUrl + '?room=' + roomId;
+            window.history.replaceState({}, '', newUrl);
+        }
+
+        // ============================================
+        // LOCAL STORAGE
+        // ============================================
+
+        const editor = document.getElementById('editor');
+        const STORAGE_KEY = 'codeshare_' + roomId;
+
+        function loadContent() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) editor.value = saved;
+            } catch (e) {}
+        }
+
+        function saveContent() {
+            try {
+                localStorage.setItem(STORAGE_KEY, editor.value);
+            } catch (e) {}
+        }
+
+        loadContent();
+
+        // ============================================
+        // PEERJS CONNECTION
+        // ============================================
+
+        let peer = null;
+        let connections = [];
+        let isUpdating = false;
+        let isConnecting = false;
+
+        const statusEl = document.getElementById('status');
+        const peerDot = document.getElementById('peerDot');
+        const peerCountEl = document.getElementById('peerCount');
+        const manualConnectDiv = document.getElementById('manualConnect');
+
+        function updateStatus(type, msg) {
+            statusEl.className = 'status ' + type;
+            statusEl.textContent = msg;
+        }
+
+        function updatePeers(count) {
+            if (count > 0) {
+                peerDot.className = 'peer-dot';
+                peerCountEl.textContent = count + ' peer' + (count > 1 ? 's' : '');
+            } else {
+                peerDot.className = 'peer-dot offline';
+                peerCountEl.textContent = '0 peers';
             }
         }
-    });
-});
 
-server.listen(3000);
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function initPeer() {
+            if (isConnecting) return;
+            isConnecting = true;
+            
+            updateStatus('connecting', '● Connecting...');
+
+            try {
+                if (peer && !peer.destroyed) {
+                    peer.destroy();
+                }
+
+                peer = new Peer(roomId, {
+                    debug: 0,
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:stun1.l.google.com:19302' },
+                            { urls: 'stun:stun2.l.google.com:19302' }
+                        ]
+                    }
+                });
+
+                peer.on('open', (id) => {
+                    console.log('✅ Peer opened:', id);
+                    updateStatus('online', '● Connected');
+                    updatePeers(connections.length);
+                    showToast('🔗 Room ready! Share the URL.');
+                    isConnecting = false;
+                    
+                    // Show manual connect option
+                    manualConnectDiv.style.display = 'flex';
+                    
+                    // Try to connect to existing peers
+                    setTimeout(() => {
+                        tryConnectToRoom();
+                    }, 1000);
+                });
+
+                peer.on('connection', (conn) => {
+                    console.log('👤 Incoming connection from:', conn.peer);
+                    setupConnection(conn);
+                });
+
+                peer.on('disconnected', () => {
+                    console.log('⚠️ Disconnected');
+                    updateStatus('connecting', '● Reconnecting...');
+                    setTimeout(() => {
+                        if (peer && !peer.destroyed) {
+                            peer.reconnect();
+                        }
+                    }, 2000);
+                });
+
+                peer.on('close', () => {
+                    console.log('🔴 Peer closed');
+                    updateStatus('offline', '● Disconnected');
+                    updatePeers(0);
+                    isConnecting = false;
+                    setTimeout(initPeer, 3000);
+                });
+
+                peer.on('error', (err) => {
+                    console.log('Peer error:', err.type);
+                    isConnecting = false;
+                    
+                    if (err.type === 'peer-unavailable') {
+                        updateStatus('online', '● Hosting room');
+                        updatePeers(0);
+                        showToast('🏠 You are the host!');
+                        manualConnectDiv.style.display = 'flex';
+                    } else if (err.type === 'invalid-id') {
+                        // Try to connect
+                        setTimeout(tryConnectToRoom, 1000);
+                    } else if (err.type === 'unavailable-id') {
+                        // Room is taken, try to connect
+                        setTimeout(tryConnectToRoom, 1000);
+                    }
+                });
+
+            } catch (e) {
+                console.error('Init error:', e);
+                updateStatus('offline', '● Error');
+                isConnecting = false;
+                setTimeout(initPeer, 3000);
+            }
+        }
+
+        function tryConnectToRoom() {
+            if (!peer || peer.destroyed || connections.length > 0) return;
+
+            try {
+                console.log('🔗 Connecting to room:', roomId);
+                const conn = peer.connect(roomId);
+                
+                if (conn) {
+                    conn.on('open', () => {
+                        console.log('✅ Connected to room!');
+                        setupConnection(conn);
+                        showToast('🔗 Connected to peers!');
+                    });
+
+                    conn.on('error', (err) => {
+                        console.log('Connection error:', err);
+                    });
+                }
+            } catch (e) {
+                console.log('Could not connect, hosting...');
+            }
+        }
+
+        function setupConnection(conn) {
+            // Avoid duplicate connections
+            if (connections.some(c => c.peer === conn.peer)) {
+                return;
+            }
+            
+            connections.push(conn);
+            updatePeers(connections.length);
+            showToast('👤 Peer connected!');
+
+            conn.on('data', (data) => {
+                try {
+                    const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+                    
+                    if (parsed.type === 'update') {
+                        isUpdating = true;
+                        editor.value = parsed.content;
+                        saveContent();
+                        isUpdating = false;
+                    }
+                    if (parsed.type === 'sync-request') {
+                        conn.send(JSON.stringify({
+                            type: 'update',
+                            content: editor.value
+                        }));
+                    }
+                } catch (e) {
+                    // If not JSON, treat as plain text update
+                    isUpdating = true;
+                    editor.value = data;
+                    saveContent();
+                    isUpdating = false;
+                }
+            });
+
+            conn.on('close', () => {
+                const index = connections.indexOf(conn);
+                if (index > -1) {
+                    connections.splice(index, 1);
+                }
+                updatePeers(connections.length);
+                if (connections.length === 0) {
+                    updateStatus('online', '● Alone in room');
+                }
+                showToast('👤 Peer disconnected');
+            });
+
+            // Request sync
+            conn.send(JSON.stringify({ type: 'sync-request' }));
+        }
+
+        function manualConnect() {
+            const input = document.getElementById('peerInput');
+            const peerId = input.value.trim();
+            
+            if (!peerId) {
+                showToast('❌ Please enter a peer ID');
+                return;
+            }
+            
+            if (!peer || peer.destroyed) {
+                showToast('❌ Peer not ready, please wait');
+                return;
+            }
+
+            try {
+                const conn = peer.connect(peerId);
+                if (conn) {
+                    conn.on('open', () => {
+                        setupConnection(conn);
+                        showToast('✅ Connected to ' + peerId);
+                        input.value = '';
+                    });
+                    conn.on('error', () => {
+                        showToast('❌ Could not connect to ' + peerId);
+                    });
+                }
+            } catch (e) {
+                showToast('❌ Connection failed');
+            }
+        }
+
+        // Send updates
+        let sendTimeout = null;
+        editor.addEventListener('input', () => {
+            saveContent();
+
+            if (!isUpdating && connections.length > 0) {
+                clearTimeout(sendTimeout);
+                sendTimeout = setTimeout(() => {
+                    const content = editor.value;
+                    const data = JSON.stringify({ type: 'update', content });
+                    
+                    connections.forEach(c => {
+                        if (c.open) {
+                            c.send(data);
+                        }
+                    });
+                }, 200);
+            }
+        });
+
+        // ============================================
+        // UI FUNCTIONS
+        // ============================================
+
+        function copyUrl() {
+            const url = window.location.origin + window.location.pathname + '?room=' + roomId;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(url).then(() => showToast('✅ URL copied!'));
+            } else {
+                const textarea = document.createElement('textarea');
+                textarea.value = url;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showToast('✅ URL copied!');
+            }
+        }
+
+        function newRoom() {
+            const newId = generateRoomId();
+            window.location.href = baseUrl + '?room=' + newId;
+        }
+
+        function downloadContent() {
+            const content = editor.value || '// Empty file';
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `codeshare-${roomId}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showToast('💾 Downloaded!');
+        }
+
+        function clearContent() {
+            if (confirm('Clear all content?')) {
+                editor.value = '';
+                saveContent();
+                const data = JSON.stringify({ type: 'update', content: '' });
+                connections.forEach(c => {
+                    if (c.open) c.send(data);
+                });
+                showToast('🗑️ Cleared');
+            }
+        }
+
+        function takeScreenshot() {
+            const wrapper = document.getElementById('editorWrapper');
+            const originalBg = document.body.style.background;
+
+            document.body.style.background = '#ffffff';
+            wrapper.style.background = '#ffffff';
+
+            setTimeout(() => {
+                html2canvas(wrapper, {
+                    scale: 2,
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                    allowTaint: true,
+                    useCORS: true
+                })
+                .then(canvas => {
+                    document.body.style.background = originalBg;
+                    wrapper.style.background = '';
+                    const link = document.createElement('a');
+                    link.download = `codeshare-${roomId}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    showToast('📸 Screenshot saved!');
+                })
+                .catch(() => {
+                    document.body.style.background = originalBg;
+                    wrapper.style.background = '';
+                    showToast('❌ Screenshot failed');
+                });
+            }, 100);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                takeScreenshot();
+            }
+            if (e.ctrlKey && e.key === 'd') {
+                e.preventDefault();
+                downloadContent();
+            }
+        });
+
+        // ============================================
+        // START
+        // ============================================
+
+        console.log('📝 Real-Time CodeShare');
+        console.log('🔗 Share:', window.location.origin + window.location.pathname + '?room=' + roomId);
+        console.log('🏠 Room ID:', roomId);
+
+        // Initialize after everything loads
+        window.addEventListener('load', () => {
+            setTimeout(initPeer, 500);
+        });
+    </script>
+</body>
+</html>
